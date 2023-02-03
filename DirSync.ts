@@ -43,7 +43,7 @@ export class DirSync {
             if (ignoreEntry) {
                 delete this.ignore[from];
                 if ((infoTo.time - ignoreEntry) < ignoreThreshold) {
-                    this.log(`syncFile on ${to} ignored`);
+                    //this.log(`syncFile on ${to} ignored`);
                     return;
                 } else
                     this.log(`out of date ignore entry on ${to} ignored`);
@@ -141,18 +141,17 @@ export class DirSync {
         const watcher = chokidar.watch(config.flat(), {})
         watcher
             .on('add', path => {
-                this.log(`add ${path}`);
+                //this.log(`add ${path}`);
                 fileInfo(path).then(info => this.addFile(info)).catch(e => this.log(e));
             })
             .on('change', path => {
-                this.log(`change ${path}`);
+                //this.log(`change ${path}`);
                 fileInfo(path).then(info => this.addFile(info)).catch(e => this.log(e));
             })
             .on('unlink', path => {
                 this.log(`unlink ${path}`);
                 fileInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(e));
             });
-        setTimeout(() => this.log('fuck'), 2000);
         // Save it
         this.configs[configFile] = {watcher, config};
     }
