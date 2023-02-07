@@ -12,6 +12,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
-    "outDir": "build"
-  }
+    "outDir": "build",
+  },
+
+  "exclude": ["tests/**/*"]
 }
