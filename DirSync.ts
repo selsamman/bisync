@@ -5,7 +5,9 @@ import chokidar, {FSWatcher} from 'chokidar';
 import * as path from "path";
 import * as fs from 'fs';
 const fsp = fs.promises;
-type Config = Array<Array<string>>;
+export type Config = Array<Array<string>>;
+type Configs = {[index: string] : {watcher: FSWatcher, config: Config}};
+export type ConfigFiles = {[index : string] : boolean}
 interface Info {
     dir : string,
     file : string,
@@ -13,25 +15,24 @@ interface Info {
     mtime: number, // file modified time
     time: number // current time
 }
+
 const ignoreThreshold = 60 * 1000;
 export class DirSync {
+
     log: (_message: string) => void = msg => console.log(msg);
 
     setLogger(log : (message: string) => void) {
         this.log = log;
     }
-    configs : {[index: string] : {watcher: FSWatcher, config: Config}} = {};
+    configs : Configs = {};
     ignore: {[index : string] : number} ={};
 
     // Copy file to sync dir as long as not copying to oneself or there
     // was entry setup to ignore the copy because it is the result of an
     // event from a previous copy
-    async syncFile (file : string, fromDir : string, fromTime: number, toDir : string) {
+    async syncFile (from : string, to : string, fromTime : number) {
         try {
 
-            // Assemble info for source and destination files
-            let from = path.join(fromDir, file);
-            let to = path.join(toDir, file);
             const infoTo = await fileInfo(to); // File may not exist
 
             // Ignore entry for same file
@@ -81,16 +82,15 @@ export class DirSync {
             await fsp.stat(dir);
             return;  // Directory exists we are done
         } catch (e) {
-            this.log(`Creating director ${dir}`);
+            this.log(`Creating directory ${dir}`);
             await fsp.mkdir(dir, {recursive: true});
         }
     }
     // Unlink file in to directory and record to ignore unlink event for the destination
-    async unlinkFile (file : string, fromDir : string, toDir : string) {
+    async unlinkFile (from : string, to : string) {
         try {
             // Gather info
-            const from = path.join(fromDir, file);
-            const to = path.join(toDir, file);
+
             const time = (new Date()).getTime();
 
             // Ignore entry for same file
@@ -112,25 +112,67 @@ export class DirSync {
 
         } catch (e) {this.log(`${e} on unlinkFile`)}
     }
-    async addFile (info : Info) {
+    async processFile(info : Info, type : "sync" | "unlink") {
         for(const config in this.configs) {
+            // Locate group that contains an entry matching the file
             const ix = this.configs[config].config.findIndex(group => group.find(dir => info.dir.startsWith(dir)));
-            this.configs[config].config[ix].forEach(dir => this.syncFile(info.file, info.dir, info.time, dir));
+            const group = this.configs[config].config[ix];
+            const fromDir = group.find(dir => info.dir.startsWith(dir)) || "";
+            // All directories in that group must be synchronized
+            group.forEach(dir => {
+                const fromPath = path.join(info.dir, info.file);
+                const toPath = path.join(dir, info.dir.substring(fromDir.length), info.file);
+                type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
+            });
         }
+    }
+    async addFile (info : Info) {
+        const config = Object.keys(this.configs).find(fileName => fileName == path.join(info.dir,info.file));
+        if (config)
+            await this.setConfig(config);
+        else
+            await this.processFile(info, "sync");
     }
     async removeFile (info : Info) {
-        for(const config in this.configs) {
-            const ix = this.configs[config].config.findIndex(group => group.find(dir => info.dir.startsWith(dir)));
-            this.configs[config].config[ix].forEach(dir => this.unlinkFile(info.file, info.dir, dir));
+        const config = Object.keys(this.configs).find(fileName => fileName == path.join(info.dir,info.file));
+        if (config)
+            await this.removeConfig(config);
+        else
+            await this.processFile(info, "unlink");
+    }
+    async removeConfig (configFile : string) {
+        if (this.configs[configFile]) {
+            await this.configs[configFile].watcher.close();
+            delete this.configs[configFile];
+            this.log(`removed ${configFile} failed`);
+        } else
+            this.log(`attempt to remove ${configFile} failed`);
+    }
+    async setConfigs(configs : ConfigFiles) {
+
+        // Any new or updated ones get added
+        for (let configsKey in configs) {
+            const newConfig = JSON.parse(Buffer.from(await fsp.readFile(configsKey)).toString()) as Config;
+            // If non-existent or outdated update it
+            if (!this.configs[configsKey] ||
+                JSON.stringify(this.configs[configsKey]) !== JSON.stringify(newConfig))
+                await this.setConfig(configsKey);
+        }
+
+        // Any ones we are currently processing that are no longer needed get unwatched
+        for (let configsKey in this.configs) {
+            if (!configs[configsKey])
+                await this.removeConfig(configsKey);
         }
     }
+
     async setConfig (configFile : string) {
 
         // Read config file and normalize paths
-        const configPath = path.dirname(configFile);
+        const configDir = path.dirname(configFile);
         const config = JSON.parse(Buffer.from(await fsp.readFile(configFile)).toString()) as Config;
         config.forEach((group, ix) => group.forEach( (file, jx) =>
-            config[ix][jx] = path.resolve(configPath,config[ix][jx])))
+            config[ix][jx] = resolvePath(configDir, config[ix][jx])))
         this.log(`adding config ${JSON.stringify(config)}`);
 
         // Unwatch any files if this is a replacement config
@@ -149,7 +191,7 @@ export class DirSync {
                 fileInfo(path).then(info => this.addFile(info)).catch(e => this.log(e));
             })
             .on('unlink', path => {
-                this.log(`unlink ${path}`);
+                //this.log(`unlink ${path}`);
                 fileInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(e));
             });
         // Save it
@@ -182,4 +224,9 @@ async function fileInfo (p : string, deleted = false) : Promise<Info> {
             mtime : 0,
         }
     }
+}
+export function resolvePath(rootPath : string, relativePath : string) {
+    if (path.isAbsolute(relativePath))
+        return relativePath;
+    return path.join(rootPath, relativePath);
 }
