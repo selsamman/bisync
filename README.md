@@ -10,7 +10,7 @@ are developing locally with a project that consumes it.
 ```
 npm install --only=dev bisync
 ```
-If you have a mono-repo with many sub-directories each of which has it's own
+If you have a mono-repo with many subdirectories each of which has it's own
 npm folder and package.json install this at the root even if it is the only
 node module at the root.
 ## Configuration
@@ -28,16 +28,15 @@ Create a bisync.json in the route directory
 ]
 ```
 The JSON file is an array of directory groups.  Each group is simply an
-array of directories to be synchronized with that group.  Recursion is not
-supported at present.
+array of directories to be synchronized within that group.  Synchronization 
+occurs recursively.
 
-The first group shows two sub-projects in a mono-repo each of which has
-directory called common for common source files.  The second one shows a
-node_module called mymodule which are actively developing and want to keep
-updated when you build it.  This let's you test changes in a target project
-without publishing.
+The first group in the example shows two subprojects in a mono-repo, each of 
+which has directory called common for common source files.  The second one shows a
+node_module being developed and project that consumes it that is to be kept 
+up-to-date as the node_module is changed and rebuilt.
 ## Background Processing
-bisync runs as daemon.  Normally you would let it run forever and start and
+bisync runs as a daemon.  Normally you would let it run forever and start and
 stop synchronization of particular project configurations when you check out
 or create projects.  If bisync detects that the project is removed (because
 the bisync.json file is deleted) it will stop synchronizing directories
@@ -49,13 +48,39 @@ projects that use it and all projects will then be synchronized.
 
 ## Commands
 
-You would typically place these scripts in the root of your project
 ```
-  "scripts": {
-    "bisync": "bisync config=bisync.json"
-  },
+npx bisync watch=<config-file>        to add a configuration file to be watched
+npx bisync forget=<config-file>       to stop watching directories in config file 
+npx bisync stop                       to stop the daemon 
+npx bisync start                      to restart the daemon (with all previous watches) 
 ```
-Then you can start synchronization with:
+## Automating its use in a repo
+
+bisync is automatically started upon installation and looks for a 
+config called bisync.json.  The package.json referring to bisync in its 
+devDependencies should both be in the root of the monorepo.
+
+However if your system is shutdown and restarted the daemon won't 
+automatically run unless you install a script to start upon login.  This 
+command can be used to insert an '''npx bisync start``` in the appropriate 
+folder based on your system (Macos, Windows). 
+
 ```
-npm bisync
+npx bisync install
 ```
+* Under windows it will add a start_bisync.bat file to 
+  C:\Users\<user-id>\AppData\Roaming\Microsoft\Windows\Start 
+  Menu\Programs\Startup
+* In osx it will create ~/start_bisync.command to ~/ and you must then go to 
+  Preferences > Users & Groups and select your user name.  Then you can add 
+  this command file to login items 
+## Logging
+If needed you can enable logging
+```
+npx bisync log=<logfile>
+```
+## Limitations
+bisync is intended for source code respositories.  It is not a general 
+purpose synchronization mechanism.  Among it's limitations are:
+* Not handling symlinks
+* Not handling file attributes such as read-only
