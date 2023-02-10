@@ -83,15 +83,18 @@ describe("File Sync Tests of DirSync.ts", () => {
 describe ("Daemon can operate",  () => {
     let started = false;
     const testDataDir = 'testData2';
-    beforeAll(() => {
+    beforeAll(async () => {
         const out = trim(execSync(`node build/sync.js stop`).toString());
+        await new Promise(r => setTimeout(() => r(true), 100));
         console.log(out);
-        started =  out === 'Damon stopped';
+        started =  out === 'Daemon stopped';
     });
-    afterAll( () => {
+    afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
+        await new Promise(r => setTimeout(() => r(true), 100));
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
+        await new Promise(r => setTimeout(() => r(true), 100));
     });
     beforeEach(async () => {
         await fsp.mkdir(testDataDir);
