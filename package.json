@@ -8,6 +8,9 @@
     "prepare": "tsc && jest",
     "postinstall": "bisync watch=bisync.json"
   },
+  "files": [
+    "/build"
+  ],
   "bin": {
     "bisync": "./bin/bisync.js"
   },
