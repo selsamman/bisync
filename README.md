@@ -1,10 +1,11 @@
 # BiSync
 
-### Bidirectional directory synchronization for software development
+### Bidirectional Directory Synchronization for Source Repositories
 
-Bisync allows directories of shared code to be synchronized generally in a
-mono-repo.  It can also be useful for synchronizing an npm project which you
-are developing locally with a project that consumes it.
+Bisync allows directories of shared code to be synchronized in both 
+directions.  Specific use cases include common code in a mono-repo and for 
+keeping projects that consume an NPM module that is under active development 
+in sync without having to publish incremental changes.
 
 ## Usage
 ```
@@ -36,16 +37,16 @@ which has directory called common for common source files.  The second one shows
 node_module being developed and project that consumes it that is to be kept 
 up-to-date as the node_module is changed and rebuilt.
 ## Background Processing
-bisync runs as a daemon.  Normally you would let it run forever and start and
-stop synchronization of particular project configurations when you check out
-or create projects.  If bisync detects that the project is removed (because
-the bisync.json file is deleted) it will stop synchronizing directories
-specified in that bisync.json file so you never need to stop it.
+Bisync runs as a daemon on port 3111.  It can handle multiple 
+configuration files from multiple projects at the same time. 
+You simply add and remove configuration files as needed.  If bisync detects 
+that the project is removed (because the configuration file is 
+deleted) it will stop synchronizing directories
+specified in that configuration file.
 
-bisync will save the name of all config files in a .bisync file in your home
-directory so that you only need start it once from within any of the
-projects that use it and all projects will then be synchronized.
-
+By naming your configuration file bisync.json, the synchronization will be 
+started automatically when bisync is installed so team members working on 
+the project don't need to explicitly start bisync.
 ## Commands
 
 ```
@@ -56,11 +57,11 @@ npx bisync start                      to restart the daemon (with all previous w
 ```
 ## Automating its use in a repo
 
-bisync is automatically started upon installation and looks for a 
+Bisync is automatically started upon installation and looks for a 
 config called bisync.json.  The package.json referring to bisync in its 
 devDependencies should both be in the root of the monorepo.
 
-However if your system is shutdown and restarted the daemon won't 
+However if your system is shutdown and restarted, the daemon won't 
 automatically run unless you install a script to start upon login.  This 
 command can be used to insert an '''npx bisync start``` in the appropriate 
 folder based on your system (Macos, Windows). 
@@ -74,13 +75,17 @@ npx bisync install
 * In osx it will create ~/start_bisync.command to ~/ and you must then go to 
   Preferences > Users & Groups and select your user name.  Then you can add 
   this command file to login items 
+
+Do not try and start bisync at system startup since it needs to be run as 
+the user that owns the files to be synced.  It is not designed to be run as 
+root.
 ## Logging
 If needed you can enable logging
 ```
 npx bisync log=<logfile>
 ```
 ## Limitations
-bisync is intended for source code respositories.  It is not a general 
+bisync is intended for source code repositories.  It is not a general 
 purpose synchronization mechanism.  Among it's limitations are:
 * Not handling symlinks
 * Not handling file attributes such as read-only

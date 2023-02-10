@@ -126,16 +126,17 @@ export class DirSync {
             });
         }
     }
-    async addFile (info : Info) {
-        const config = Object.keys(this.configs).find(fileName => fileName == path.join(info.dir,info.file));
-        if (config)
-            await this.setConfig(config);
-        else
+    async addFile (info : Info, type : "add" | "change") {
+        const config = path.join(info.dir, info.file);
+        if (this.configs[config]) {
+            if (type === "change")
+                await this.setConfig(config);
+        } else
             await this.processFile(info, "sync");
     }
     async removeFile (info : Info) {
-        const config = Object.keys(this.configs).find(fileName => fileName == path.join(info.dir,info.file));
-        if (config)
+        const config = path.join(info.dir, info.file);
+        if (this.configs[config])
             await this.removeConfig(config);
         else
             await this.processFile(info, "unlink");
@@ -144,19 +145,23 @@ export class DirSync {
         if (this.configs[configFile]) {
             await this.configs[configFile].watcher.close();
             delete this.configs[configFile];
-            this.log(`removed ${configFile} failed`);
+            this.log(`${configFile} no longer being watched`);
         } else
             this.log(`attempt to remove ${configFile} failed`);
     }
     async setConfigs(configs : ConfigFiles) {
-
+        this.log(`Setting configuration files ${Object.keys(configs).join(",")}`);
         // Any new or updated ones get added
         for (let configsKey in configs) {
-            const newConfig = JSON.parse(Buffer.from(await fsp.readFile(configsKey)).toString()) as Config;
-            // If non-existent or outdated update it
-            if (!this.configs[configsKey] ||
-                JSON.stringify(this.configs[configsKey]) !== JSON.stringify(newConfig))
-                await this.setConfig(configsKey);
+            try {
+                const newConfig = JSON.parse(Buffer.from(await fsp.readFile(configsKey)).toString()) as Config;
+                // If non-existent or outdated update it
+                if (!this.configs[configsKey] ||
+                    JSON.stringify(this.configs[configsKey]) !== JSON.stringify(newConfig))
+                         await this.setConfig(configsKey);
+            } catch (_e) {
+                delete configs[configsKey];
+            }
         }
 
         // Any ones we are currently processing that are no longer needed get unwatched
@@ -180,15 +185,17 @@ export class DirSync {
             await this.configs[configFile].watcher.close();
 
         // Create a new watcher that watches all directories in config file
-        const watcher = chokidar.watch(config.flat(), {})
+        const watcher = chokidar.watch([...config.flat(), configFile], {});
+        this.log(JSON.stringify([...config.flat(), configFile]));
+        //watcher.add(configFile);
         watcher
             .on('add', path => {
                 //this.log(`add ${path}`);
-                fileInfo(path).then(info => this.addFile(info)).catch(e => this.log(e));
+                fileInfo(path).then(info => this.addFile(info, "add")).catch(e => this.log(e));
             })
             .on('change', path => {
                 //this.log(`change ${path}`);
-                fileInfo(path).then(info => this.addFile(info)).catch(e => this.log(e));
+                fileInfo(path).then(info => this.addFile(info, "change")).catch(e => this.log(e));
             })
             .on('unlink', path => {
                 //this.log(`unlink ${path}`);

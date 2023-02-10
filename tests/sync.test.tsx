@@ -1,7 +1,6 @@
 import {DirSync} from "../DirSync";
 import * as fs from 'fs';
-import {exec, execSync} from "child_process";
-import {processArgs} from "../sync";
+import {execSync} from "child_process";
 const fsp = fs.promises;
 
 
@@ -72,6 +71,7 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
         expect(await fileEventuallyContains(`${testDataDir}/to/file1.txt`, 'hoo')).toBe(true);
     });
+
     async function writeConfig() {
         await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
             [
@@ -82,22 +82,56 @@ describe("File Sync Tests of DirSync.ts", () => {
 });
 describe ("Daemon can operate",  () => {
     let started = false;
+    const testDataDir = 'testData2';
     beforeAll(() => {
         const out = trim(execSync(`node build/sync.js stop`).toString());
         console.log(out);
         started =  out === 'Damon stopped';
     });
     afterAll( () => {
+        console.log(execSync(`node build/sync.js stop`).toString());
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
+    });
+    beforeEach(async () => {
+        await fsp.mkdir(testDataDir);
+    });
+    afterEach(async() => {
+        await fsp.rm(testDataDir, {recursive: true})
     });
     it ("can start and stop daemon", async () => {
         expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon started');
         await new Promise(r => setTimeout(() => r(true), 100));
         expect(trim(execSync(`node build/sync.js stop`).toString())).toBe('Daemon stopped');
     });
-
+    it("change config file", async () => {
+        await fsp.mkdir(`${testDataDir}/from`);
+        await fsp.mkdir(`${testDataDir}/to`);
+        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'foo');
+        await fsp.writeFile(`${testDataDir}/bisync.json`, "[]");
+        expect(trim(execSync(`node build/sync.js watch=${testDataDir}/bisync.json`).toString())).toBe(`Watching ${testDataDir}/bisync.json`);
+        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
+        expect(await fileExists(`${testDataDir}/from/file1.txt`)).toBe(true);
+        expect(await fileExists(`${testDataDir}/to/file1.txt`)).toBe(false);
+        await writeConfig();
+        expect(await fileEventuallyExists(`${testDataDir}/to/file1.txt`)).toBe(true);
+    });
+    async function writeConfig() {
+        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
+            [
+                [`from`, `to`]
+            ]
+        ));
+    }
 });
+async function fileExists(file : string) {
+    try {
+        await fsp.stat(file);
+        return true;
+    } catch (_e) {
+        return false;
+    }
+}
 async function fileEventuallyExists ( file : string) {
     return await new Promise( resolve => {
         const interval = setInterval(async () => {

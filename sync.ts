@@ -4,10 +4,9 @@ import { io } from "socket.io-client";
 import * as child from 'child_process';
 import * as path from "path";
 import * as fs from 'fs';
-import {homedir} from "os";
 import date from 'date-and-time';
+import * as os from "os";
 const fsp = fs.promises;
-type Config = Array<Array<string>>;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const args = require('args-parser')(process.argv);
 //console.log(args);
@@ -54,12 +53,13 @@ export async function processArgs (args : any) {
         await synchronize();
         log(`Daemon Started`);
     } else {
+        if (Object.keys(args).length > 1)
+            args = {};
         if (args.log) {
             config = await getConfig();
             config.logFile = resolvePath(process.cwd(), args.log);
             await saveConfig();
-        }
-        if (args.start) {
+        } else if (args.start) {
             try {
                 await callDaemon('update', '');
                 console.log('Daemon already running');
@@ -104,12 +104,16 @@ export async function processArgs (args : any) {
                 console.log(e);
                 config = await getConfig();
             }
+        } else if (args.install) {
+            await install();
         } else
             console.log(`usage:
-        npx bisync watch=<config-file>        to add a configuration file to be watched
-        npx bisync forget=<config-file>       to stop watching directories in config file 
+        npx bisync watch=<config-file>        to add a configuration file to be watched and start daemon
+        npx bisync forget=<config-file>       to stop watching directories in config file and start daemon 
         npx bisync stop                       to stop the daemon 
-        npx bisync start                      to restart the daemon (with all previous watches) 
+        npx bisync start                      to restart the daemon (with all previous watches)
+        npx bisync log=<logfile-name>         log events to a file
+        npx bisync install                    prepare your system to automatically start bisync on login 
 `);
         process.exit(0);
     }
@@ -124,6 +128,8 @@ async function synchronize () {
     if (config) {
         sync.setLogger(log);
         await sync.setConfigs(config.configFiles);
+        log(JSON.stringify(config.configFiles));
+        await saveConfig(); // In case some were removed
     }
 
     const io = new Server(args.port || 3111);
@@ -132,10 +138,11 @@ async function synchronize () {
 
         log('socket.io connected');
 
-        socket.on('update', async configFile => {
+        socket.on('update', async () => {
             try {
                 config = await getConfig();
                 await sync.setConfigs(config.configFiles);
+                await saveConfig(); // In case some were removed
                 io.emit('ok');
             } catch (e) {
                 io.emit('error', e);
@@ -195,4 +202,26 @@ function spawnDaemon() {
         });
         spawned.unref();
     });
+}
+
+async function install() {
+    if (os.platform() === 'darwin') {
+        const commandFile = `${require('os').homedir()}/start_bisync.command`;
+        await fsp.writeFile(commandFile, 'npx bisync start');
+        console.log(`To complete installation of damon:
+1) In Preferences go to Users & Groups
+2) Select your user name.
+3) Add ${commandFile} to login items
+You will see a terminal window open each time you login and start bisync
+`);
+
+    } else if (os.platform() === 'win32') {
+        const commandFile = `${require('os').homedir()}/start_bisync.bat`;
+        await fsp.writeFile(commandFile, 'npx bisync start');
+        console.log(`${commandFile} created to start bisync on login`);
+    } else {
+        console.log(`Cannot automatically install a script to start bisync on this operating system
+You will need to add a startup script to run "npx bisync start" on login
+`);
+    }
 }

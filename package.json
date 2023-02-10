@@ -1,11 +1,12 @@
 {
   "name": "bisync",
-  "version": "1.0.0",
-  "description": "Bidirectional Directory Synchronization",
-  "main": "index.js",
+  "version": "0.9.0",
+  "description": "Bidirectional Directory Synchronization for Source Code Repositories",
   "scripts": {
     "build": "tsc",
-    "test": "tsc && jest"
+    "test": "tsc && jest",
+    "prepare": "tsc && jest",
+    "postinstall": "bisync watch=bisync.json"
   },
   "bin": {
     "bisync": "./bin/bisync.js"
