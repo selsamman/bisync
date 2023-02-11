@@ -85,16 +85,16 @@ describe ("Daemon can operate",  () => {
     const testDataDir = 'testData2';
     beforeAll(async () => {
         const out = trim(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 200));
+        await new Promise(r => setTimeout(() => r(true), 500));
         console.log(out);
         started =  out === 'Daemon stopped';
     });
     afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 200));
+        await new Promise(r => setTimeout(() => r(true), 500));
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
-        await new Promise(r => setTimeout(() => r(true), 200));
+        await new Promise(r => setTimeout(() => r(true), 500));
     });
     beforeEach(async () => {
         await fsp.mkdir(testDataDir);
@@ -104,7 +104,7 @@ describe ("Daemon can operate",  () => {
     });
     it ("can start and stop daemon", async () => {
         expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon started');
-        await new Promise(r => setTimeout(() => r(true), 200));
+        await new Promise(r => setTimeout(() => r(true), 500));
         expect(trim(execSync(`node build/sync.js stop`).toString())).toBe('Daemon stopped');
     });
     it("change config file", async () => {
@@ -113,10 +113,12 @@ describe ("Daemon can operate",  () => {
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'foo');
         await fsp.writeFile(`${testDataDir}/bisync.json`, "[]");
         expect(trim(execSync(`node build/sync.js watch=${testDataDir}/bisync.json`).toString())).toBe(`Watching ${testDataDir}/bisync.json`);
-        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
+        await new Promise(r => setTimeout(() => r(true), 500)); // Allow init to finish
         expect(await fileExists(`${testDataDir}/from/file1.txt`)).toBe(true);
         expect(await fileExists(`${testDataDir}/to/file1.txt`)).toBe(false);
         await writeConfig();
+        execSync(`node build/sync.js status`)
+        await new Promise(r => setTimeout(() => r(true), 500));
         expect(await fileEventuallyExists(`${testDataDir}/to/file1.txt`)).toBe(true);
     });
     async function writeConfig() {

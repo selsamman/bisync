@@ -64,7 +64,7 @@ export class DirSync {
 
             // If same data ignore
             if (infoTo.mtime && Buffer.compare(fromData, await fsp.readFile(to)) === 0) {
-                this.log(`${from} is the same as ${to}`);
+                //this.log(`${from} is the same as ${to}`);
                 return;
             }
 
@@ -154,12 +154,12 @@ export class DirSync {
         // Any new or updated ones get added
         for (let configsKey in configs) {
             try {
-                const newConfig = JSON.parse(Buffer.from(await fsp.readFile(configsKey)).toString()) as Config;
+                const newConfig = await this.getConfigDetails(configsKey);
                 // If non-existent or outdated update it
-                if (!this.configs[configsKey] ||
-                    JSON.stringify(this.configs[configsKey]) !== JSON.stringify(newConfig))
-                         await this.setConfig(configsKey);
-            } catch (_e) {
+                if (!this.configs[configsKey] || JSON.stringify(this.configs[configsKey].config) !== JSON.stringify(newConfig))
+                   await this.setConfig(configsKey);
+            } catch (e : any) {
+                this.log(e);
                 delete configs[configsKey];
             }
         }
@@ -170,14 +170,16 @@ export class DirSync {
                 await this.removeConfig(configsKey);
         }
     }
-
-    async setConfig (configFile : string) {
-
-        // Read config file and normalize paths
+    async getConfigDetails(configFile : string) {
         const configDir = path.dirname(configFile);
         const config = JSON.parse(Buffer.from(await fsp.readFile(configFile)).toString()) as Config;
         config.forEach((group, ix) => group.forEach( (file, jx) =>
-            config[ix][jx] = resolvePath(configDir, config[ix][jx])))
+            config[ix][jx] = resolvePath(configDir, config[ix][jx])));
+        return config;
+    }
+    async setConfig (configFile : string) {
+
+        const config = await this.getConfigDetails(configFile);
         this.log(`adding config ${JSON.stringify(config)}`);
 
         // Unwatch any files if this is a replacement config

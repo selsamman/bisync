@@ -91,13 +91,13 @@ export async function processArgs (args : any) {
             try {
                 config = await getConfig();
                 config.configFiles[resolvePath(process.cwd(), args.watch)] = true;
+                await saveConfig();
                 try {
                     await callDaemon('update', '');
                 } catch (e) {
                     spawnDaemon();
                 }
                 console.log(`Watching ${args.watch}`);
-                await saveConfig();
             } catch (e) {
                 console.log(e);
                 config = await getConfig();
@@ -105,14 +105,15 @@ export async function processArgs (args : any) {
         } else if (args.forget) {
             try {
                 config = await getConfig();
-                delete config.configFiles[args.watch];
+                delete config.configFiles[args.forget];
+                await saveConfig();
                 try {
                     await callDaemon('update', '');
                 } catch (e) {
                     spawnDaemon();
                 }
-                console.log(`Stopped watching ${args.watch}`);
-                await saveConfig();
+                console.log(`Stopped watching ${args.forget}`);
+
             } catch (e) {
                 console.log(e);
                 config = await getConfig();

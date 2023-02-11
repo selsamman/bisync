@@ -1,6 +1,6 @@
 {
   "name": "bisync",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "Bidirectional Directory Synchronization for Source Code Repositories",
   "scripts": {
     "build": "tsc",
@@ -14,6 +14,7 @@
   "bin": {
     "bisync": "./bin/bisync.js"
   },
+  "repository": "https://github.com/selsamman/bisync",
   "author": "Sam Elsamman",
   "license": "MIT",
   "devDependencies": {
