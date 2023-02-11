@@ -8,6 +8,7 @@ keeping projects that consume an NPM module that is under active development
 in sync without having to publish incremental changes.
 
 ## Usage
+[![npm version](https://badge.fury.io/js/bisync.svg)](https://badge.fury.io/js/bisync)
 ```
 npm install bisync --save-dev
 ```
