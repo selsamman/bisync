@@ -55,7 +55,20 @@ export async function processArgs (args : any) {
     } else {
         if (Object.keys(args).length > 1)
             args = {};
-        if (args.log) {
+        if (args.status) {
+            try {
+                await callDaemon('update', "");
+                console.log('Daemon running')
+                if (Object.keys((await getConfig()).configFiles).length > 0)
+                    console.log(`These configuration files are in effect:`);
+            } catch (e) {
+                console.log('Daemon not running - these configuration files will be in effect when it is started:');
+                if (Object.keys((await getConfig()).configFiles).length > 0)
+                    console.log(`These configuration files will be in effect when it is started:`);
+            }
+            Object.keys((await getConfig()).configFiles).forEach(key => console.log(` - ${key}`));
+            console.log(`Current log file: ${(await getConfig()).logFile}`);
+        } else if (args.log) {
             config = await getConfig();
             config.logFile = resolvePath(process.cwd(), args.log);
             await saveConfig();
@@ -113,6 +126,7 @@ export async function processArgs (args : any) {
         npx bisync stop                       to stop the daemon 
         npx bisync start                      to restart the daemon (with all previous watches)
         npx bisync log=<logfile-name>         log events to a file
+        npx bisync status                     show status of daemon and which config files are in effect
         npx bisync install                    prepare your system to automatically start bisync on login 
 `);
         process.exit(0);

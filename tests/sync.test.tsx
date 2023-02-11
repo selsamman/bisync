@@ -85,16 +85,16 @@ describe ("Daemon can operate",  () => {
     const testDataDir = 'testData2';
     beforeAll(async () => {
         const out = trim(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 100));
+        await new Promise(r => setTimeout(() => r(true), 200));
         console.log(out);
         started =  out === 'Daemon stopped';
     });
     afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 100));
+        await new Promise(r => setTimeout(() => r(true), 200));
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
-        await new Promise(r => setTimeout(() => r(true), 100));
+        await new Promise(r => setTimeout(() => r(true), 200));
     });
     beforeEach(async () => {
         await fsp.mkdir(testDataDir);
@@ -104,7 +104,7 @@ describe ("Daemon can operate",  () => {
     });
     it ("can start and stop daemon", async () => {
         expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon started');
-        await new Promise(r => setTimeout(() => r(true), 100));
+        await new Promise(r => setTimeout(() => r(true), 200));
         expect(trim(execSync(`node build/sync.js stop`).toString())).toBe('Daemon stopped');
     });
     it("change config file", async () => {

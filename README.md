@@ -9,7 +9,7 @@ in sync without having to publish incremental changes.
 
 ## Usage
 ```
-npm install --only=dev bisync
+npm install bisync --save-dev
 ```
 If you have a mono-repo with many subdirectories each of which has it's own
 npm folder and package.json install this at the root even if it is the only
@@ -53,7 +53,9 @@ the project don't need to explicitly start bisync.
 npx bisync watch=<config-file>        to add a configuration file to be watched
 npx bisync forget=<config-file>       to stop watching directories in config file 
 npx bisync stop                       to stop the daemon 
-npx bisync start                      to restart the daemon (with all previous watches) 
+npx bisync start                      to restart the daemon (with all previous watches)
+npx bisync status                     show status of daemon and which config files are in effect
+npx bisync install                    prepare your system to automatically start bisync on login  
 ```
 ## Automating its use in a repo
 
@@ -88,4 +90,5 @@ npx bisync log=<logfile>
 bisync is intended for source code repositories.  It is not a general 
 purpose synchronization mechanism.  Among it's limitations are:
 * Not handling symlinks
-* Not handling file attributes such as read-only
+* Not handling file attributes such as read-only or executable
+* Not handling ownership of files

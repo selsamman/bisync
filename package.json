@@ -1,12 +1,12 @@
 {
   "name": "bisync",
-  "version": "0.9.0",
+  "version": "0.9.4",
   "description": "Bidirectional Directory Synchronization for Source Code Repositories",
   "scripts": {
     "build": "tsc",
     "test": "tsc && jest",
     "prepare": "tsc && jest",
-    "postinstall": "bisync watch=bisync.json"
+    "postinstall": "cd ../../ && bisync watch=bisync.json"
   },
   "files": [
     "/build"
@@ -21,7 +21,7 @@
     "@typescript-eslint/eslint-plugin": "^5.36.2",
     "@typescript-eslint/parser": "^5.36.2",
      "@types/jest": "^26.0.22",
-    "date-and-time": "^2.4.1",
+
     "eslint": "8.22.0",
     "typescript": "^4.8.2",
     "jest": "^26.6.3",
@@ -32,6 +32,7 @@
     "chokidar": "^3.5.3",
     "js-freeze-dry": "^1.1.4",
     "socket.io": "^4.5.2",
-    "socket.io-client": "^4.5.2"
+    "socket.io-client": "^4.5.2",
+    "date-and-time": "^2.4.1"
   }
 }
