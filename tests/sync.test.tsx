@@ -2,7 +2,7 @@ import {DirSync} from "../DirSync";
 import * as fs from 'fs';
 import {execSync} from "child_process";
 const fsp = fs.promises;
-
+const configFile = `${require('os').homedir()}/.bisync`;
 
 describe("File Sync Tests of DirSync.ts", () => {
     const testDataDir = 'testData1';
@@ -83,18 +83,18 @@ describe("File Sync Tests of DirSync.ts", () => {
 describe ("Daemon can operate",  () => {
     let started = false;
     const testDataDir = 'testData2';
+    let config = "";
     beforeAll(async () => {
+        config = (await fsp.readFile(configFile)).toString();
         const out = trim(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 500));
         console.log(out);
         started =  out === 'Daemon stopped';
     });
     afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
-        await new Promise(r => setTimeout(() => r(true), 500));
+        await fsp.writeFile(configFile, config);
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
-        await new Promise(r => setTimeout(() => r(true), 500));
     });
     beforeEach(async () => {
         await fsp.mkdir(testDataDir);
@@ -103,8 +103,7 @@ describe ("Daemon can operate",  () => {
         await fsp.rm(testDataDir, {recursive: true})
     });
     it ("can start and stop daemon", async () => {
-        expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon started');
-        await new Promise(r => setTimeout(() => r(true), 500));
+        expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon running');
         expect(trim(execSync(`node build/sync.js stop`).toString())).toBe('Daemon stopped');
     });
     it("change config file", async () => {
@@ -112,13 +111,11 @@ describe ("Daemon can operate",  () => {
         await fsp.mkdir(`${testDataDir}/to`);
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'foo');
         await fsp.writeFile(`${testDataDir}/bisync.json`, "[]");
-        expect(trim(execSync(`node build/sync.js watch=${testDataDir}/bisync.json`).toString())).toBe(`Watching ${testDataDir}/bisync.json`);
-        await new Promise(r => setTimeout(() => r(true), 500)); // Allow init to finish
+        expect(trim(execSync(`node build/sync.js watch=${testDataDir}/bisync.json`).toString())).toBe(`Watching ${process.cwd()}/${testDataDir}/bisync.json`);
         expect(await fileExists(`${testDataDir}/from/file1.txt`)).toBe(true);
         expect(await fileExists(`${testDataDir}/to/file1.txt`)).toBe(false);
         await writeConfig();
         execSync(`node build/sync.js status`)
-        await new Promise(r => setTimeout(() => r(true), 500));
         expect(await fileEventuallyExists(`${testDataDir}/to/file1.txt`)).toBe(true);
     });
     async function writeConfig() {

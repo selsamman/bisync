@@ -3,9 +3,9 @@
 ### Bidirectional Directory Synchronization for Source Repositories
 
 Bisync allows directories of shared code to be synchronized in both 
-directions.  Specific use cases include common code in a mono-repo and for 
-keeping projects that consume an NPM module that is under active development 
-in sync without having to publish incremental changes.
+directions.  The specific use case is a mono-repo with shared code.  This 
+can be a less troublesome solution than symlinks which are not universally 
+supported with build tools or require careful configuration.
 
 ## Usage
 [![npm version](https://badge.fury.io/js/bisync.svg)](https://badge.fury.io/js/bisync)
@@ -52,7 +52,7 @@ the project don't need to explicitly start bisync.
 
 ```
 npx bisync watch=<config-file>        to add a configuration file to be watched
-npx bisync forget=<config-file>       to stop watching directories in config file 
+npx bisync uwatch=<config-file>       to stop watching configuration file
 npx bisync stop                       to stop the daemon 
 npx bisync start                      to restart the daemon (with all previous watches)
 npx bisync status                     show status of daemon and which config files are in effect

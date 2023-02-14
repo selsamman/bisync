@@ -4,7 +4,12 @@ Synchronization engine based on chokidar.  Manages a watcher for each config fil
 import chokidar, {FSWatcher} from 'chokidar';
 import * as path from "path";
 import * as fs from 'fs';
+
 const fsp = fs.promises;
+
+
+
+
 export type Config = Array<Array<string>>;
 type Configs = {[index: string] : {watcher: FSWatcher, config: Config}};
 export type ConfigFiles = {[index : string] : boolean}
@@ -117,13 +122,17 @@ export class DirSync {
             // Locate group that contains an entry matching the file
             const ix = this.configs[config].config.findIndex(group => group.find(dir => info.dir.startsWith(dir)));
             const group = this.configs[config].config[ix];
-            const fromDir = group.find(dir => info.dir.startsWith(dir)) || "";
-            // All directories in that group must be synchronized
-            group.forEach(dir => {
-                const fromPath = path.join(info.dir, info.file);
-                const toPath = path.join(dir, info.dir.substring(fromDir.length), info.file);
-                type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
-            });
+            if (group) {
+                const fromDir = group.find(dir => info.dir.startsWith(dir)) || "";
+                // All directories in that group must be synchronized
+                group.forEach(dir => {
+                    const fromPath = path.join(info.dir, info.file);
+                    const toPath = path.join(dir, info.dir.substring(fromDir.length), info.file);
+                    type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
+                });
+            }
+            else
+                this.log(`${config} contains undefined config`);
         }
     }
     async addFile (info : Info, type : "add" | "change") {
@@ -146,8 +155,10 @@ export class DirSync {
             await this.configs[configFile].watcher.close();
             delete this.configs[configFile];
             this.log(`${configFile} no longer being watched`);
-        } else
+        } else {
             this.log(`attempt to remove ${configFile} failed`);
+            throw new Error(`${configFile} was not being watched`);
+        }
     }
     async setConfigs(configs : ConfigFiles) {
         this.log(`Setting configuration files ${Object.keys(configs).join(",")}`);
@@ -159,7 +170,7 @@ export class DirSync {
                 if (!this.configs[configsKey] || JSON.stringify(this.configs[configsKey].config) !== JSON.stringify(newConfig))
                    await this.setConfig(configsKey);
             } catch (e : any) {
-                this.log(e);
+                this.log(`${e} on setConfigs`);
                 delete configs[configsKey];
             }
         }
@@ -171,15 +182,37 @@ export class DirSync {
         }
     }
     async getConfigDetails(configFile : string) {
-        const configDir = path.dirname(configFile);
-        const config = JSON.parse(Buffer.from(await fsp.readFile(configFile)).toString()) as Config;
-        config.forEach((group, ix) => group.forEach( (file, jx) =>
+
+        let config : any;
+        let configDir : string;
+
+        try {
+            configDir = path.dirname(configFile);
+            config = JSON.parse(Buffer.from(await fsp.readFile(configFile)).toString());
+        } catch (e) {
+            this.log(`Cannot open ${configFile}`);
+            throw new Error(`Cannot open ${configFile}`);
+        }
+
+        if (!(config instanceof  Array))
+            throw new Error(`configFile must be an array of arrays of directories`);
+        config.forEach(group => {
+            if (!(group instanceof  Array))
+                throw new Error(`configFile must be an array of arrays of directories`);
+            group.forEach(dir => {
+                if (typeof dir !== 'string' )
+                    throw new Error(`configFile must be an array of arrays of directories`);
+            })
+        })
+        config.forEach((group, ix) => group.forEach((file : string, jx: number) =>
             config[ix][jx] = resolvePath(configDir, config[ix][jx])));
-        return config;
+
+        return config as Config;
     }
     async setConfig (configFile : string) {
 
         const config = await this.getConfigDetails(configFile);
+
         this.log(`adding config ${JSON.stringify(config)}`);
 
         // Unwatch any files if this is a replacement config
@@ -192,16 +225,16 @@ export class DirSync {
         //watcher.add(configFile);
         watcher
             .on('add', path => {
-                //this.log(`add ${path}`);
-                fileInfo(path).then(info => this.addFile(info, "add")).catch(e => this.log(e));
+                this.log(`add ${path}`);
+                fileInfo(path).then(info => this.addFile(info, "add")).catch(e => this.log(`${e} ${e.stack} on add/addFile`));
             })
             .on('change', path => {
-                //this.log(`change ${path}`);
-                fileInfo(path).then(info => this.addFile(info, "change")).catch(e => this.log(e));
+                this.log(`change ${path}`);
+                fileInfo(path).then(info => this.addFile(info, "change")).catch(e => this.log(`${e} ${e.stack} on change/addFile`));
             })
             .on('unlink', path => {
-                //this.log(`unlink ${path}`);
-                fileInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(e));
+                this.log(`unlink ${path}`);
+                fileInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(`${e} ${e.stack} on unlink/removeFile`));
             });
         // Save it
         this.configs[configFile] = {watcher, config};

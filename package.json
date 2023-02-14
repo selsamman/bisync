@@ -1,6 +1,6 @@
 {
   "name": "bisync",
-  "version": "0.9.5",
+  "version": "0.9.7",
   "description": "Bidirectional Directory Synchronization for Source Code Repositories",
   "scripts": {
     "build": "tsc",
