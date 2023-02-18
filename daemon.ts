@@ -40,6 +40,7 @@ export async function synchronize() {
             } catch (e: any) {
                 log(e);
                 log(`Daemon responded Error: ${e.message}`);
+                io.emit('error', e.message);
             }
         });
         socket.on('update', async () => {
@@ -50,8 +51,8 @@ export async function synchronize() {
                 await saveConfig(sync); // In case some were removed
                 io.emit('ok', 'Daemon running');
                 log(`Daemon responded OK: Daemon running`);
-            } catch (e) {
-                io.emit('error', e);
+            } catch (e : any) {
+                io.emit('error', e.message);
             }
         });
 

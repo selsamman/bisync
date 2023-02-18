@@ -120,17 +120,23 @@ export class DirSync {
     async processFile(info : Info, type : "sync" | "unlink") {
         for(const config in this.configs) {
             // Locate group that contains an entry matching the file
-            const ix = this.configs[config].config.findIndex(group => group.find(dir => info.dir.startsWith(dir)));
+            const ix = this.configs[config].config.findIndex(group => group.find(configMatch));
             const group = this.configs[config].config[ix];
             if (group) {
-                const fromDir = group.find(dir => info.dir.startsWith(dir)) || "";
+                const fromDirOrFile = group.find(configMatch) || "";
                 // All directories in that group must be synchronized
-                group.forEach(dir => {
+                group.forEach(dirOrFile => {
                     const fromPath = path.join(info.dir, info.file);
-                    const toPath = path.join(dir, info.dir.substring(fromDir.length), info.file);
+                    const toPath = fromPath === path.join(info.dir, path.basename(dirOrFile))
+                        ? dirOrFile
+                        : path.join(dirOrFile, info.dir.substring(fromDirOrFile.length), info.file);
                     type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
                 });
             }
+        }
+        function configMatch(dirOrFile : string) {
+                return path.join(info.dir, info.file) === dirOrFile ||
+                       info.dir.startsWith(dirOrFile)
         }
     }
     async addFile (info : Info, type : "add" | "change") {
