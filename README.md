@@ -31,7 +31,8 @@ Create a bisync.json in the route directory
 ```
 The JSON file is an array of directory groups.  Each group is simply an
 array of directories to be synchronized within that group.  Synchronization 
-occurs recursively.
+occurs recursively.  Although designed for directories, individual files may 
+be synchronized as well.
 
 The first group in the example shows two subprojects in a mono-repo, each of 
 which has directory called common for common source files.  The second one shows a
