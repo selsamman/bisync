@@ -52,7 +52,7 @@ export function setMainFile(name : string) {
 }
 function spawnDaemon() {
     const parsed = path.parse(mainFile);
-    const damonScript = parsed.ext === 'ts' ? `${parsed.dir}/build/${parsed.base}.js` : mainFile;
+    const damonScript = parsed.ext === '.ts' ? `${parsed.dir}/build/${parsed.name}.js` : mainFile;
     const spawnArgs = [damonScript, "--daemon"]
     const spawned: child.ChildProcess = child.spawn('node', spawnArgs,
         {
