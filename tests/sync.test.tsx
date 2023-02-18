@@ -118,17 +118,21 @@ describe("File Sync Tests of DirSync.ts", () => {
 describe ("Daemon can operate",  () => {
     let started = false;
     const testDataDir = 'testData2';
-    let config = "";
+    let config: string | undefined = undefined;
     beforeAll(async () => {
-        config = (await fsp.readFile(configFile)).toString();
-        const out = trim(execSync(`node build/sync.js stop`).toString());
-        console.log(out);
-        started =  out === 'Daemon stopped';
+        if (await fileExists(configFile))
+        {
+            config = (await fsp.readFile(configFile)).toString();
+            const out = trim(execSync(`node build/sync.js stop`).toString());
+            console.log(out);
+            started = out === 'Daemon stopped';
+        }
         try{await fsp.rm(`test.log`);}catch(_e){}
     });
     afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
-        await fsp.writeFile(configFile, config);
+        if (config != null)
+            await fsp.writeFile(configFile, config);
         if (started)
             console.log(execSync(`node build/sync.js start`).toString());
     });
