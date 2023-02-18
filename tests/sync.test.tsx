@@ -76,35 +76,35 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'boo');
+        await fsp.writeFile(`${testDataDir}/to/file2.txt`, 'boo');
         await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
             [
-                [`from/file1.txt`, `to/file1.txt`]
+                [`from/file1.txt`, `to/file2.txt`]
             ]
         ));
         await sync.setConfig(`${testDataDir}/bisync.json`);
         await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
         expect(!!await fsp.stat(`${testDataDir}/from/file1.txt`)).toBe(true);
-        expect(!!await fsp.stat(`${testDataDir}/to/file1.txt`)).toBe(true);
+        expect(!!await fsp.stat(`${testDataDir}/to/file2.txt`)).toBe(true);
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
-        expect(await fileEventuallyContains(`${testDataDir}/to/file1.txt`, 'hoo')).toBe(true);
+        expect(await fileEventuallyContains(`${testDataDir}/to/file2.txt`, 'hoo')).toBe(true);
     });
     it("delete individual file", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'boo');
+        await fsp.writeFile(`${testDataDir}/to/file2.txt`, 'boo');
         await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
             [
-                [`from/file1.txt`, `to/file1.txt`]
+                [`from/file1.txt`, `to/file2.txt`]
             ]
         ));
         await sync.setConfig(`${testDataDir}/bisync.json`);
         await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
         expect(!!await fsp.stat(`${testDataDir}/from/file1.txt`)).toBe(true);
-        expect(!!await fsp.stat(`${testDataDir}/to/file1.txt`)).toBe(true);
+        expect(!!await fsp.stat(`${testDataDir}/to/file2.txt`)).toBe(true);
         await fsp.rm(`${testDataDir}/from/file1.txt`);
-        expect(await fileEventuallyDeleted(`${testDataDir}/to/file1.txt`)).toBe(true);
+        expect(await fileEventuallyDeleted(`${testDataDir}/to/file2.txt`)).toBe(true);
     });
 
     async function writeConfig() {
