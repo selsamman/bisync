@@ -131,8 +131,6 @@ export class DirSync {
                     type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
                 });
             }
-            else
-                this.log(`${config} contains undefined config`);
         }
     }
     async addFile (info : Info, type : "add" | "change") {
