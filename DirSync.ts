@@ -4,22 +4,13 @@ Synchronization engine based on chokidar.  Manages a watcher for each config fil
 import chokidar, {FSWatcher} from 'chokidar';
 import * as path from "path";
 import * as fs from 'fs';
-
+import {Info, resolvePath, pathInfo, infoToPath, getMirroredPath, isFileInGroup } from './pathUtil'
 const fsp = fs.promises;
-
-
 
 
 export type Config = Array<Array<string>>;
 type Configs = {[index: string] : {watcher: FSWatcher, config: Config}};
 export type ConfigFiles = {[index : string] : boolean}
-interface Info {
-    dir : string,
-    file : string,
-    size: number,
-    mtime: number, // file modified time
-    time: number // current time
-}
 
 const ignoreThreshold = 60 * 1000;
 export class DirSync {
@@ -38,7 +29,7 @@ export class DirSync {
     async syncFile (from : string, to : string, fromTime : number) {
         try {
 
-            const infoTo = await fileInfo(to); // File may not exist
+            const infoTo = await pathInfo(to); // File may not exist
 
             // Ignore entry for same file
             if (from === to)
@@ -117,28 +108,50 @@ export class DirSync {
 
         } catch (e) {this.log(`${e} on unlinkFile`)}
     }
+
     async processFile(info : Info, type : "sync" | "unlink") {
-        for(const config in this.configs) {
-            // Locate group that contains an entry matching the file
-            const ix = this.configs[config].config.findIndex(group => group.find(configMatch));
-            const group = this.configs[config].config[ix];
-            if (group) {
-                const fromDirOrFile = group.find(configMatch) || "";
-                // All directories in that group must be synchronized
-                group.forEach(dirOrFile => {
-                    const fromPath = path.join(info.dir, info.file);
-                    const toPath = fromPath === path.join(info.dir, path.basename(dirOrFile))
-                        ? dirOrFile
-                        : path.join(dirOrFile, info.dir.substring(fromDirOrFile.length), info.file);
-                    type === "sync" ? this.syncFile(fromPath, toPath, info.time) : this.unlinkFile(fromPath, toPath)
-                });
-            }
+        const mirroredPaths = await this.getMirroredPaths(info);
+        mirroredPaths.forEach(mirrorPath => {
+            const fromPath = infoToPath(info);
+            type === "sync" ? this.syncFile(fromPath, mirrorPath, info.time) : this.unlinkFile(fromPath, mirrorPath);
+        });
+    }
+
+    async getMirroredPaths(info: Info, includeSrcPath = false): Promise<string[]> {
+        // Locate group that contains an entry matching the file
+        const allGroupInfos = await this.getAllGroupPathInfos();
+        
+        // All directories in that group must be synchronized
+        const groupsWithFile = allGroupInfos.filter(grp => isFileInGroup(info, grp));
+        let mirroredPaths = groupsWithFile.flatMap(group => 
+            group.map(grpInfo => getMirroredPath(info, grpInfo)));
+        
+        // exclude original file?
+        if (!includeSrcPath) {
+            const srcPath = infoToPath(info);
+            mirroredPaths = mirroredPaths.filter(mirrorPath => mirrorPath !== srcPath);
         }
-        function configMatch(dirOrFile : string) {
-                return path.join(info.dir, info.file) === dirOrFile ||
-                       info.dir.startsWith(dirOrFile)
+
+        return mirroredPaths;
+    }
+
+    async getAllGroupPathInfos(): Promise<Info[][]> {
+        const allGroups = Object.values(this.configs).flatMap(config => config.config);
+        const groupPromises = allGroups
+            .map(group => {
+                const promises = group.map(pathInGroup => pathInfo(pathInGroup));
+                return Promise.all(promises);
+            });
+
+        try {
+            const resolvedGroups = await Promise.all(groupPromises);
+            return resolvedGroups;
+        } catch (e) {
+            this.log(`Error getting PathInfo on some groups! Is config valid?`);
+            throw e;
         }
     }
+
     async addFile (info : Info, type : "add" | "change") {
         const config = path.join(info.dir, info.file);
         if (this.configs[config]) {
@@ -230,15 +243,15 @@ export class DirSync {
         watcher
             .on('add', path => {
                 this.log(`add ${path}`);
-                fileInfo(path).then(info => this.addFile(info, "add")).catch(e => this.log(`${e} ${e.stack} on add/addFile`));
+                pathInfo(path).then(info => this.addFile(info, "add")).catch(e => this.log(`${e} ${e.stack} on add/addFile`));
             })
             .on('change', path => {
                 this.log(`change ${path}`);
-                fileInfo(path).then(info => this.addFile(info, "change")).catch(e => this.log(`${e} ${e.stack} on change/addFile`));
+                pathInfo(path).then(info => this.addFile(info, "change")).catch(e => this.log(`${e} ${e.stack} on change/addFile`));
             })
             .on('unlink', path => {
                 this.log(`unlink ${path}`);
-                fileInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(`${e} ${e.stack} on unlink/removeFile`));
+                pathInfo(path, true).then(info => this.removeFile(info)).catch(e => this.log(`${e} ${e.stack} on unlink/removeFile`));
             });
         // Save it
         this.configs[configFile] = {watcher, config};
@@ -251,28 +264,4 @@ export class DirSync {
         return
     }
 }
-async function fileInfo (p : string, deleted = false) : Promise<Info> {
-    try {
-        const info = deleted ? {size: 0, mtime: new Date()} : await fsp.stat(p);
-        return {
-            dir: path.dirname(p),
-            file: path.basename(p),
-            size: info.size,
-            mtime: info.size ? info.mtime.getTime() : 0,
-            time: (new Date()).getTime()
-        }
-    } catch (e) {
-        return {
-            dir : '',
-            file : '',
-            size : 0,
-            time: (new Date()).getTime(),
-            mtime : 0,
-        }
-    }
-}
-export function resolvePath(rootPath : string, relativePath : string) {
-    if (path.isAbsolute(relativePath))
-        return relativePath;
-    return path.join(rootPath, relativePath);
-}
+
