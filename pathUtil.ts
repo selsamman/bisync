@@ -16,10 +16,24 @@ export interface Info {
     time: number // current time
 }
 
+// TODO: when creating a pathInfo, the path may not exist.
+// Can you know if its a dir or a file?
+// We can say that if path ends with '\\' or '/' its a dir?
+//
+// Edge case - consider this hierarchy:
+// root/
+//  apple/
+//  banana
+//
+// Say the user wants to sync "root/apple". that file doesnt exist, but the dir 'apple/' does.
+// Same for 'banana\' (dir doesnt exist, file does)
+//
+// Simplest thing for dev would be to always treat banana/ as a dir, ignoring the file.
+// But we can log a warning for confusing names
 export async function pathInfo (p : string, deleted = false) : Promise<Info> {
     try {
         const stats = deleted ? {size: 0, mtime: new Date()} : await fsp.stat(p);
-        let type: InfoType = "error";
+        let type: InfoType = "unknown";
         
         if (!deleted) {
             const _stats = (stats as fs.Stats);
