@@ -43,6 +43,30 @@ describe("File Sync Tests of DirSync.ts", () => {
         expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoooo')).toBe(true);
     });
 
+    it("Sync file with different name", async () => {
+        await fsp.mkdir(`${testDataDir}/from`);
+        await fsp.mkdir(`${testDataDir}/to`);
+        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
+        await fsp.writeFile(`${testDataDir}/to/file2.txt`, 'boo');
+        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
+            [
+                [`from/file1.txt`, `to/file1.txt`]
+            ]
+        ));
+        await sync.setConfig(`${testDataDir}/bisync.json`);
+        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
+        expect(!!(await fsp.stat(`${testDataDir}/from/file1.txt`))).toBe(true);
+        expect(!!(await fsp.stat(`${testDataDir}/to/file2.txt`))).toBe(true);        
+
+        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
+        expect(await fileEventuallyContains(`${testDataDir}/to/file2.txt`, 'hoo')).toBe(true);
+
+        await new Promise(f => setTimeout(() => f(true), 100));
+
+        await fsp.writeFile(`${testDataDir}/to/file2.txt`, 'hoooo');
+        expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoooo')).toBe(true);
+    });
+
     it("add individual file", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
