@@ -12,7 +12,7 @@ describe ("Daemon can operate",  () => {
         config = (await fsp.readFile(configFile)).toString();
         const out = trim(execSync(`node build/sync.js stop`).toString());
         console.log(out);
-        started =  out === 'Daemon stopped';
+        started = out === 'Daemon stopped';
         try{await fsp.rm(`test.log`);}catch(_e){}
     });
     afterAll( async () => {
@@ -29,7 +29,10 @@ describe ("Daemon can operate",  () => {
         try{await fsp.rm(testDataDir, {recursive: true})}catch(_e){}
     });
     it ("can start and stop daemon", async () => {
+        
         expect(trim(execSync(`node build/sync.js start`).toString())).toBe('Daemon running');
+        // TODO: There seemes to be a race condition where the next line could come back as "Daemon not running"
+        // Maybe this is because other tests jest runs in parallel all affect the same daemon on port 3111?
         expect(trim(execSync(`node build/sync.js stop`).toString())).toBe('Daemon stopped');
     });
     it("create config file while daemon running", async () => {
