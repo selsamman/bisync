@@ -73,6 +73,29 @@ describe("File Sync Tests of DirSync.ts", () => {
         expect(await fileEventuallyContains(`${testDataDir}/to/file1.txt`, 'hoo')).toBe(true);
     });
 
+    async function writeConfig() {
+        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
+            [
+                [`from`, `to`]
+            ]
+        ));
+    }
+});
+
+describe("File Sync Tests of DirSync.ts", () => {
+    const testDataDir = 'testData1';
+    let sync : DirSync = new DirSync();
+    beforeEach(async () => {
+        sync = new DirSync();
+        try{await fsp.rm(testDataDir, {recursive: true})} catch (_e) {}
+        try{await fsp.mkdir(testDataDir);} catch (_e) {}
+    });
+    afterEach(async() => {
+        sync.quit();
+        await fsp.rm(testDataDir, {recursive: true})
+    });
+
+    
     it("change individual file", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
@@ -96,6 +119,7 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'hoooo');
         expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoooo')).toBe(true);
     });
+    
     it("add individual file", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
@@ -115,6 +139,7 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
         expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoo')).toBe(true);
     });
+
     it("delete individual file", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
@@ -132,15 +157,8 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.rm(`${testDataDir}/from/file1.txt`);
         expect(await fileEventuallyDeleted(`${testDataDir}/to/file1.txt`)).toBe(true);
     });
-
-    async function writeConfig() {
-        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
-            [
-                [`from`, `to`]
-            ]
-        ));
-    }
 });
+
 describe ("Daemon can operate",  () => {
     let started = false;
     const testDataDir = 'testData2';
