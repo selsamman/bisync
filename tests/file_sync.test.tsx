@@ -1,8 +1,6 @@
 import {DirSync} from "../DirSync";
 import * as fs from 'fs';
-import {execSync} from "child_process";
 const fsp = fs.promises;
-const configFile = `${require('os').homedir()}/.bisync`;
 import {fileEventuallyContains, fileEventuallyDeleted, fileExists, fileEventuallyExists, trim} from "./test_helpers";
 
 describe("File Sync Tests of DirSync.ts", () => {
