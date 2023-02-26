@@ -10,40 +10,54 @@ export async function fileExists(file : string) {
         return false;
     }
 }
-export async function fileEventuallyExists ( file : string) {
+export async function fileEventuallyExists ( file : string, timeout: number = 500) {
     return await new Promise( resolve => {
+        let timePassed = 0;
+        let delta = 50;
         const interval = setInterval(async () => {
             try {
                 await fsp.stat(file);
                 clearInterval(interval);
                 resolve(true);
-            } catch {}
-        }, 50);
+            } catch {
+                timePassed += delta;
+                if (timePassed >= timeout) resolve(false);
+            }
+        }, delta);
     });
 }
-export async function fileEventuallyContains ( file : string, value : string) {
+export async function fileEventuallyContains ( file : string, value : string, timeout: number = 500) {
     return await new Promise( resolve => {
+        let timePassed = 0;
+        let delta = 50;
         const interval = setInterval(async () => {
             const data : string = (await fsp.readFile(file)).toString();
             if (data === value) {
                 clearInterval(interval);
                 resolve(true);
             }
-        }, 50);
+            
+            timePassed += delta;
+            if (timePassed >= timeout) resolve(false);
+        }, delta);
     });
 }
-export async function fileEventuallyDeleted ( file : string) {
+export async function fileEventuallyDeleted ( file : string, timeout: number = 500) {
     return await new Promise( resolve => {
+        let timePassed = 0;
+            let delta = 50;
         const interval = setInterval(async () => {
             try {
                 await fsp.stat(file);
                 console.log(`${file} exists`);
+                timePassed += delta;
+                if (timePassed >= timeout) resolve(false);
             } catch {
                 console.log(file + ' deleted');
                 clearInterval(interval);
                 resolve(true);
             }
-        }, 50);
+        }, delta);
     });
 }
 export function trim(str : string) {
