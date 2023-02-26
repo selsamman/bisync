@@ -10,15 +10,15 @@ export async function fileExists(file : string) {
         return false;
     }
 }
-export async function fileEventuallyExists ( file : string, timeout: number = 500) {
+export async function fileEventuallyExists ( file : string, timeout: number = 100) {
     return await new Promise( resolve => {
         let timePassed = 0;
         let delta = 50;
         const interval = setInterval(async () => {
             try {
-                await fsp.stat(file);
+                const stat = await fsp.stat(file);
                 clearInterval(interval);
-                resolve(true);
+                resolve(stat.isFile());
             } catch {
                 timePassed += delta;
                 if (timePassed >= timeout) resolve(false);
@@ -26,23 +26,28 @@ export async function fileEventuallyExists ( file : string, timeout: number = 50
         }, delta);
     });
 }
-export async function fileEventuallyContains ( file : string, value : string, timeout: number = 500) {
+export async function fileEventuallyContains ( file : string, value : string, timeout: number = 100) {
     return await new Promise( resolve => {
         let timePassed = 0;
         let delta = 50;
         const interval = setInterval(async () => {
-            const data : string = (await fsp.readFile(file)).toString();
-            if (data === value) {
-                clearInterval(interval);
-                resolve(true);
-            }
-            
-            timePassed += delta;
-            if (timePassed >= timeout) resolve(false);
+            try
+            {
+                const data : string = (await fsp.readFile(file)).toString();
+                if (data === value) {
+                    clearInterval(interval);
+                    resolve(true);
+                }
+                
+                timePassed += delta;
+                if (timePassed >= timeout) resolve(false);
+        } catch {
+            resolve(false);
+        }
         }, delta);
     });
 }
-export async function fileEventuallyDeleted ( file : string, timeout: number = 500) {
+export async function fileEventuallyDeleted ( file : string, timeout: number = 100) {
     return await new Promise( resolve => {
         let timePassed = 0;
             let delta = 50;
