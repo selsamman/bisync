@@ -3,9 +3,10 @@ import * as fs from 'fs';
 import {execSync} from "child_process";
 const fsp = fs.promises;
 const configFile = `${require('os').homedir()}/.bisync`;
+import {fileEventuallyContains, fileEventuallyDeleted, fileExists, fileEventuallyExists, trim} from "./test_helpers";
 
-describe("File Sync Tests of DirSync.ts", () => {
-    const testDataDir = 'testData1';
+describe("Dir Sync Tests of DirSync.ts", () => {
+    const testDataDir = 'testData_dirSync';
     let sync : DirSync = new DirSync();
     beforeEach(async () => {
         sync = new DirSync();
@@ -59,7 +60,7 @@ describe("File Sync Tests of DirSync.ts", () => {
         await fsp.rm(`${testDataDir}/from/somewhere/else/file1.txt`);
         expect(await fileEventuallyDeleted(`${testDataDir}/to/somewhere/else/file1.txt`)).toBe(true);
     });
-    it("change file", async () => {
+    it("change file within synced dirs", async () => {
         await fsp.mkdir(`${testDataDir}/from`);
         await fsp.mkdir(`${testDataDir}/to`);
         await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
@@ -82,86 +83,11 @@ describe("File Sync Tests of DirSync.ts", () => {
     }
 });
 
-describe("File Sync Tests of DirSync.ts", () => {
-    const testDataDir = 'testData1';
-    let sync : DirSync = new DirSync();
-    beforeEach(async () => {
-        sync = new DirSync();
-        try{await fsp.rm(testDataDir, {recursive: true})} catch (_e) {}
-        try{await fsp.mkdir(testDataDir);} catch (_e) {}
-    });
-    afterEach(async() => {
-        sync.quit();
-        await fsp.rm(testDataDir, {recursive: true})
-    });
 
-    
-    it("change individual file", async () => {
-        await fsp.mkdir(`${testDataDir}/from`);
-        await fsp.mkdir(`${testDataDir}/to`);
-        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
-            [
-                [`from/file1.txt`, `to/file1.txt`]
-            ]
-        ));
-        await sync.setConfig(`${testDataDir}/bisync.json`);
-        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
-        expect(!!await fsp.stat(`${testDataDir}/from/file1.txt`)).toBe(true);
-        expect(!!await fsp.stat(`${testDataDir}/to/file1.txt`)).toBe(true);
-
-        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
-        expect(await fileEventuallyContains(`${testDataDir}/to/file1.txt`, 'hoo')).toBe(true);
-
-        await new Promise(f => setTimeout(() => f(true), 100));
-
-        await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'hoooo');
-        expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoooo')).toBe(true);
-    });
-    
-    it("add individual file", async () => {
-        await fsp.mkdir(`${testDataDir}/from`);
-        await fsp.mkdir(`${testDataDir}/to`);
-        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
-            [
-                [`from/file1.txt`, `to/file1.txt`]
-            ]
-        ));
-        await sync.setConfig(`${testDataDir}/bisync.json`);
-        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
-
-        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
-        expect(await fileEventuallyExists(`${testDataDir}/to/file1.txt`)).toBe(true);
-
-        await new Promise(f => setTimeout(() => f(true), 100));
-
-        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'hoo');
-        expect(await fileEventuallyContains(`${testDataDir}/from/file1.txt`, 'hoo')).toBe(true);
-    });
-
-    it("delete individual file", async () => {
-        await fsp.mkdir(`${testDataDir}/from`);
-        await fsp.mkdir(`${testDataDir}/to`);
-        await fsp.writeFile(`${testDataDir}/from/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/to/file1.txt`, 'boo');
-        await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
-            [
-                [`from/file1.txt`, `to/file1.txt`]
-            ]
-        ));
-        await sync.setConfig(`${testDataDir}/bisync.json`);
-        await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
-        expect(!!await fsp.stat(`${testDataDir}/from/file1.txt`)).toBe(true);
-        expect(!!await fsp.stat(`${testDataDir}/to/file1.txt`)).toBe(true);
-        await fsp.rm(`${testDataDir}/from/file1.txt`);
-        expect(await fileEventuallyDeleted(`${testDataDir}/to/file1.txt`)).toBe(true);
-    });
-});
 
 describe ("Daemon can operate",  () => {
     let started = false;
-    const testDataDir = 'testData2';
+    const testDataDir = 'testData_daemon';
     let config = "";
     beforeAll(async () => {
         config = (await fsp.readFile(configFile)).toString();
@@ -210,52 +136,3 @@ describe ("Daemon can operate",  () => {
         ));
     }
 });
-async function fileExists(file : string) {
-    try {
-        await fsp.stat(file);
-        return true;
-    } catch (_e) {
-        return false;
-    }
-}
-async function fileEventuallyExists ( file : string) {
-    return await new Promise( resolve => {
-        const interval = setInterval(async () => {
-            try {
-                await fsp.stat(file);
-                clearInterval(interval);
-                resolve(true);
-            } catch {}
-        }, 50);
-    });
-}
-async function fileEventuallyContains ( file : string, value : string) {
-    return await new Promise( resolve => {
-        const interval = setInterval(async () => {
-            const data : string = (await fsp.readFile(file)).toString();
-            if (data === value) {
-                clearInterval(interval);
-                resolve(true);
-            }
-        }, 50);
-    });
-}
-async function fileEventuallyDeleted ( file : string) {
-    return await new Promise( resolve => {
-        const interval = setInterval(async () => {
-            try {
-                await fsp.stat(file);
-                console.log(`${file} exists`);
-            } catch {
-                console.log(file + ' deleted');
-                clearInterval(interval);
-                resolve(true);
-            }
-        }, 50);
-    });
-}
-function trim(str : string) {
-    return str.replace(/\n/, '')
-        .replace(/\r/, '')
-        .replace(/\\/g, "/");
-}
