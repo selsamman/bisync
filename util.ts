@@ -1,6 +1,7 @@
 import fs from "fs";
 import date from "date-and-time";
 import {config} from "./config";
+import {ConfigFiles} from "./DirSync";
 
 export const fsp = fs.promises;
 
@@ -17,5 +18,9 @@ export function log(str: string) {
     } catch (e) {
         return false;
     }
+}
+
+export function verifyConfigFile(config : ConfigFiles) {
+
 }
 

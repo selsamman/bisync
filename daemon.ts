@@ -20,10 +20,11 @@ export async function synchronize() {
         socket.on('watch', async file => {
             log(`Request to watch ${file}`);
             try {
-                await sync.setConfig(file);
+                const warnings : Array<string> = [];
+                await sync.setConfig(file, warnings);
                 await saveConfig(sync);
                 io.emit('ok', `Watching ${file}`);
-                log(`Daemon responded OK: Watching ${file}`);
+                log(`${formatWarnings(warnings)}Daemon responded OK: Watching ${file}`);
 
             } catch (e: any) {
                 log(e);
@@ -46,10 +47,11 @@ export async function synchronize() {
         socket.on('update', async () => {
             log(`Request to update`);
             try {
+                const warnings : Array<string> = [];
                 await getConfig();
-                await sync.setConfigs(config.configFiles);
+                await sync.setConfigs(config.configFiles, warnings);
                 await saveConfig(sync); // In case some were removed
-                io.emit('ok', 'Daemon running');
+                io.emit('ok', `${formatWarnings(warnings)}Daemon running`);
                 log(`Daemon responded OK: Daemon running`);
             } catch (e : any) {
                 io.emit('error', e.message);
@@ -62,4 +64,8 @@ export async function synchronize() {
             process.exit(0);
         });
     });
+}
+
+function formatWarnings (warnings : Array<string>) {
+    return warnings.length ? warnings.join('\n') + '\n' : '';
 }

@@ -164,12 +164,12 @@ export class DirSync {
             throw new Error(`${configFile} was not being watched`);
         }
     }
-    async setConfigs(configs : ConfigFiles) {
+    async setConfigs(configs : ConfigFiles, warnings : Array<string> = []) {
         this.log(`Setting configuration files ${Object.keys(configs).join(",")}`);
         // Any new or updated ones get added
         for (let configsKey in configs) {
             try {
-                const newConfig = await this.getConfigDetails(configsKey);
+                const newConfig = await this.getConfigDetails(configsKey, warnings);
                 // If non-existent or outdated update it
                 if (!this.configs[configsKey] || JSON.stringify(this.configs[configsKey].config) !== JSON.stringify(newConfig))
                    await this.setConfig(configsKey);
@@ -185,7 +185,7 @@ export class DirSync {
                 await this.removeConfig(configsKey);
         }
     }
-    async getConfigDetails(configFile : string) {
+    async getConfigDetails(configFile : string, warnings : Array<string> = []) {
 
         let config : any;
         let configDir : string;
@@ -197,25 +197,50 @@ export class DirSync {
             this.log(`Cannot open ${configFile}`);
             throw new Error(`Cannot open ${configFile}`);
         }
-
+        const structuralError = `configFile must be an array of arrays of two or more paths`
         if (!(config instanceof  Array))
-            throw new Error(`configFile must be an array of arrays of directories`);
-        config.forEach(group => {
+            throw new Error(structuralError);
+        let fileNotFound = false;
+        for (let ix = 0; ix < config.length; ++ix) {
+            const group = config[ix];
             if (!(group instanceof  Array))
-                throw new Error(`configFile must be an array of arrays of directories`);
-            group.forEach(dir => {
-                if (typeof dir !== 'string' )
-                    throw new Error(`configFile must be an array of arrays of directories`);
-            })
-        })
-        config.forEach((group, ix) => group.forEach((file : string, jx: number) =>
-            config[ix][jx] = resolvePath(configDir, config[ix][jx])));
+                throw new Error(structuralError);
+            if (group.length < 2)
+                throw new Error(structuralError);
+            const types : Array<string> = [];
+            for (let jx = 0; jx < group.length; ++jx) {
+                const dirIn = group[jx];
+                if (typeof dirIn !== 'string' )
+                    throw new Error(structuralError);
+                const dir = resolvePath(configDir, dirIn);
+                try {
+                  const isDir = (await fsp.stat(dir)).isDirectory();
+                  if (isDir)
+                      types.push("/");
+                  else
+                      types.push(path.basename(dir));
+                } catch (e) {
+                    fileNotFound = true;
+                        warnings.push(`${dir} does not exist`);
+                }
+                config[ix][jx] = dir;
+            }
+            if (!fileNotFound) {
+                types.forEach(type => {
+                    if (type !== types[0])
+                        warnings.push('All entries in a group must be either a directory or a common file name');
+                })
+                if (types.length !== group.length)
+                    throw new Error(structuralError);
+            }
+        }
+
 
         return config as Config;
     }
-    async setConfig (configFile : string) {
+    async setConfig (configFile : string, warning : Array<string> = []) {
 
-        const config = await this.getConfigDetails(configFile);
+        const config = await this.getConfigDetails(configFile, warning);
 
         this.log(`adding config ${JSON.stringify(config)}`);
 

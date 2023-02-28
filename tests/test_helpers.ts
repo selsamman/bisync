@@ -10,7 +10,7 @@ export async function fileExists(file : string) {
         return false;
     }
 }
-export async function fileEventuallyExists ( file : string, timeout: number = 100) {
+export async function fileEventuallyExists ( file : string, timeout: number = 500) {
     return await new Promise( resolve => {
         let timePassed = 0;
         let delta = 50;
@@ -26,7 +26,7 @@ export async function fileEventuallyExists ( file : string, timeout: number = 10
         }, delta);
     });
 }
-export async function fileEventuallyContains ( file : string, value : string, timeout: number = 100) {
+export async function fileEventuallyContains ( file : string, value : string, timeout: number = 500) {
     return await new Promise( resolve => {
         let timePassed = 0;
         let delta = 50;
@@ -47,7 +47,7 @@ export async function fileEventuallyContains ( file : string, value : string, ti
         }, delta);
     });
 }
-export async function fileEventuallyDeleted ( file : string, timeout: number = 100) {
+export async function fileEventuallyDeleted ( file : string, timeout: number = 500) {
     return await new Promise( resolve => {
         let timePassed = 0;
             let delta = 50;

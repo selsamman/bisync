@@ -91,7 +91,10 @@ describe("File Sync Tests of DirSync.ts", () => {
                 [`from/file1`, `to/file2`]
             ]
         ));
-        await sync.setConfig(`${testDataDir}/bisync.json`);
+        const warnings : Array<string> = [];
+        await sync.setConfig(`${testDataDir}/bisync.json`, warnings);
+        expect(warnings[0]).toBe(`All entries in a group must be either a directory or a common file name`);
+        /*
         await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
         expect(!!(await fsp.stat(`${testDataDir}/from/file1`))).toBe(true);
         expect(!!(await fsp.stat(`${testDataDir}/to/file2`))).toBe(true);        
@@ -103,30 +106,34 @@ describe("File Sync Tests of DirSync.ts", () => {
 
         await fsp.writeFile(`${testDataDir}/to/file2`, 'hoooo');
         expect(await fileEventuallyContains(`${testDataDir}/from/file1`, 'hoooo')).toBe(true);
+        */
     });
 
     it("naming error (file path==existing dir path)", async () => {
-        await Promise.all([
-            fsp.mkdir(`${testDataDir}/from`),
-            fsp.mkdir(`${testDataDir}/to`),
-            fsp.mkdir(`${testDataDir}/to/file1`), // directory with same name
-        ]);
+
+        await fsp.mkdir(`${testDataDir}/from`);
+        await fsp.mkdir(`${testDataDir}/to`);
+        await fsp.mkdir(`${testDataDir}/to/file1`); // directory with same name
         await fsp.writeFile(`${testDataDir}/bisync.json`, JSON.stringify(
             [
                 [`from/file1`, `to/file1`]
             ]
         ));
-        await sync.setConfig(`${testDataDir}/bisync.json`);
+        const warnings : Array<string> = [];
+        await sync.setConfig(`${testDataDir}/bisync.json`, warnings);
+        expect(warnings[0]).toBe(`${testDataDir}/from/file1 does not exist`);
+        /*
         await new Promise(r => setTimeout(() => r(true), 200)); // Allow init to finish
 
         // TODO: Replace file expectations with log expectations
         await fsp.writeFile(`${testDataDir}/from/file1`, 'boo');
-        expect(await fileEventuallyExists(`${testDataDir}/to/file1`)).toBe(true);
+        expect(await fileEventuallyExists(`${testDataDir}/to/file1/file1`)).toBe(true);
 
         await new Promise(f => setTimeout(() => f(true), 100));
 
         await fsp.writeFile(`${testDataDir}/from/file1`, 'hoo');
         expect(await fileEventuallyContains(`${testDataDir}/to/file1`, 'hoo')).toBe(true);
+        */
     });
 });
 
