@@ -20,7 +20,3 @@ export function log(str: string) {
     }
 }
 
-export function verifyConfigFile(config : ConfigFiles) {
-
-}
-

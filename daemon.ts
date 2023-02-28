@@ -23,7 +23,7 @@ export async function synchronize() {
                 const warnings : Array<string> = [];
                 await sync.setConfig(file, warnings);
                 await saveConfig(sync);
-                io.emit('ok', `Watching ${file}`);
+                io.emit('ok', `${formatWarnings(warnings)}Watching ${file}`);
                 log(`${formatWarnings(warnings)}Daemon responded OK: Watching ${file}`);
 
             } catch (e: any) {
@@ -67,5 +67,5 @@ export async function synchronize() {
 }
 
 function formatWarnings (warnings : Array<string>) {
-    return warnings.length ? warnings.join('\n') + '\n' : '';
+    return warnings.length ? warnings.map(w => `Warning: ${w}\n`).join('') : '';
 }

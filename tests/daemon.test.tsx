@@ -14,6 +14,10 @@ describe ("Daemon can operate",  () => {
         console.log(out);
         started = out === 'Daemon stopped';
         try{await fsp.rm(`test.log`);}catch(_e){}
+        await fsp.writeFile(configFile, JSON.stringify({
+            logFile: undefined,
+            configFiles: {}
+        }));
     });
     afterAll( async () => {
         console.log(execSync(`node build/sync.js stop`).toString());
